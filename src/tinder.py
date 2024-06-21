@@ -123,14 +123,12 @@ class Person(object):
         return f"{self.id}  -  {self.name} ({self.birth_date.strftime('%d.%m.%Y')})"
 
 
-class Profile(Person):
+class Profile(object):
 
     def __init__(self, data, api):
-
-        super().__init__(data["user"], api)
-        self.email = data["account"].get("email")
+        self.email = data["account"].get("account_email")
         self.phone_number = data["account"].get("account_phone_number")
-
+        self.id = data["user"]["_id"]
         self.age_min = data["user"]["age_filter_min"]
         self.age_max = data["user"]["age_filter_max"]
         user_interests = data["user"].get('user_interests', {}).get('selected_interests', [])
