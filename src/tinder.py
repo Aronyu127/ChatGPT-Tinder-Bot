@@ -129,6 +129,7 @@ class Profile(object):
         self.email = data["account"].get("account_email")
         self.phone_number = data["account"].get("account_phone_number")
         self.id = data["user"]["_id"]
+        self.bio = data["user"].get("bio")
         self.age_min = data["user"]["age_filter_min"]
         self.age_max = data["user"]["age_filter_max"]
         user_interests = data["user"].get('user_interests', {}).get('selected_interests', [])

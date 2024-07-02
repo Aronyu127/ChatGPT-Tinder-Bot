@@ -1,5 +1,6 @@
 import datetime
 import os
+import json
 from src.chatgpt import ChatGPT, DALLE
 from src.models import OpenAIModel
 from src.tinder import TinderAPI
@@ -23,12 +24,35 @@ scheduler = AsyncIOScheduler()
 cc = OpenCC('s2t')
 TINDER_TOKEN = os.getenv('TINDER_TOKEN')
 
+def export_valuable_messages():
+    tinder_api = TinderAPI(TINDER_TOKEN)
+    profile = tinder_api.profile()
+    user_id = profile.id
+    for match in tinder_api.matches(limit=100):
+        chatroom = tinder_api.get_messages(match.match_id)
+        count = len(chatroom.messages)
+        dialog.export_message_json(user_id, chatroom.messages[::-1]) if count > 20 else None
+    combine_json_files(user_id)
+
+def combine_json_files(user_id):
+    file_path = f'chat_data/{user_id}'
+    json_files = [file for file in os.listdir(file_path) if file.endswith('.json')]
+    combined_data = []
+    for file in json_files:
+        with open(f'chat_data/{user_id}/{file}', 'r') as f:
+            data = json.load(f)
+            combined_data.append(data)
+    with open(f'chat_data/{user_id}/combined.jsonl', 'w', encoding="utf-8") as f:
+        for item in combined_data:
+            json.dump(item, f, ensure_ascii=False)
+            f.write('\n')
+
 
 @scheduler.scheduled_job("cron", minute='*/5', second=0, id='reply_messages')
 def reply_messages():
     tinder_api = TinderAPI(TINDER_TOKEN)
     profile = tinder_api.profile()
-
+    interests = ', '.join(profile.user_interests)
     user_id = profile.id
 
     for match in tinder_api.matches(limit=50):
@@ -44,9 +68,9 @@ def reply_messages():
                 to_user_id = lastest_message.from_id
                 last_message = 'other'
             sent_date = lastest_message.sent_date
-            if last_message == 'other' or (sent_date + datetime.timedelta(days=1)) < datetime.datetime.now():
+            if last_message == 'other' or (sent_date + datetime.timedelta(days=5)) < datetime.datetime.now():
                 content = dialog.generate_input(from_user_id, to_user_id, chatroom.messages[::-1])
-                response = chatgpt.get_response(content)
+                response = chatgpt.get_response(profile.bio, interests ,content)
                 if response:
                     response = cc.convert(response)
                     if response.startswith('[Sender]'):
@@ -73,3 +97,5 @@ async def root():
 
 if __name__ == "__main__":
     uvicorn.run('main:app', host='0.0.0.0', port=8080)
+
+# export_valuable_messages()
